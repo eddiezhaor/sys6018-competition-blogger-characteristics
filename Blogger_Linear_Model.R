@@ -96,7 +96,55 @@ lm.3 <- lm(Userage ~ .-(user.id),data = new.training.2)
 summary(lm.3) # R.2 increased to 0.5988
 
 
+# Model 4: 
+# try other weighting methods
 
+blogs.clean.smart = DocumentTermMatrix(mywords, control = list(weighting = function (x) weightSMART(x,spec="ltc")))
+blogs.clean.smart
+
+
+# Remove sparse terms at various thresholds.
+#smart.99 = removeSparseTerms(blogs.clean.smart, 0.99)  # remove terms that are absent from at least 99% of documents (keep most terms)
+#smart.99
+
+smart.95 = removeSparseTerms(blogs.clean.smart, 0.95)
+smart.95
+
+smart.90 = removeSparseTerms(blogs.clean.smart, 0.90)
+smart.90
+
+smart.85 = removeSparseTerms(blogs.clean.smart, 0.85)
+smart.85
+
+# try 0.85 removeSParseTerms
+# bind term matrix to aggregated train data
+new.training.4 <-cbind(data.aggre[,-6], as.matrix(smart.85))
+
+colnames(new.training.4)[c(2,3,4,5)] <- c(c("Usergender","Usertopic","Usersign","Userage")) 
+
+cols <- c("Usergender","Usertopic","Usersign")
+new.training.4[cols] <- lapply(new.training.4[cols], factor)
+
+lm.4 <- lm(Userage ~ .-(user.id),data = new.training.4)
+summary(lm.4)
+# Residual standard error: 5.411 on 11487 degrees of freedom
+# Multiple R-squared:  0.5749,	Adjusted R-squared:  0.538 
+# F-statistic: 15.58 on 997 and 11487 DF,  p-value: < 2.2e-16
+
+
+
+smart.80 = removeSparseTerms(blogs.clean.smart, 0.80)
+smart.80
+
+new.training.5 <-cbind(data.aggre[,-6], as.matrix(smart.80))
+
+colnames(new.training.5)[c(2,3,4,5)] <- c(c("Usergender","Usertopic","Usersign","Userage")) 
+
+cols <- c("Usergender","Usertopic","Usersign")
+new.training.5[cols] <- lapply(new.training.5[cols], factor)
+
+lm.5 <- lm(Userage ~ .-(user.id),data = new.training.5)
+summary(lm.5)
 
 
 
@@ -221,11 +269,102 @@ MAE <- mean(abs(pred.age.valid.3 - new.valid.3$Userage))
 MAE 
 # [1] 4.745015
 
-# It seems the first model is the best among the three.
 
 
+# try lm.4 (weightsmart)
 
 
+valid.clean.smart = DocumentTermMatrix(mywords.valid, control = list(weighting = function (x) weightSMART(x,spec="ltc")))
+valid.clean.smart
+
+
+# Remove sparse terms at various thresholds.
+#smart.99 = removeSparseTerms(blogs.clean.smart, 0.99)  # remove terms that are absent from at least 99% of documents (keep most terms)
+#smart.99
+
+smart.95.valid = removeSparseTerms(valid.clean.smart, 0.95)
+smart.95.valid
+
+smart.90.valid = removeSparseTerms(valid.clean.smart, 0.90)
+smart.90.valid
+
+smart.85.valid = removeSparseTerms(valid.clean.smart, 0.85)
+smart.85.valid
+
+# bind term matrix to aggregated train data
+new.valid.4 <-cbind(valid.aggre[,-6], as.matrix(smart.85.valid))
+
+colnames(new.valid.4)[c(2,3,4,5)] <- c(c("Usergender","Usertopic","Usersign","Userage")) 
+
+cols <- c("Usergender","Usertopic","Usersign")
+new.valid.4[cols] <- lapply(new.valid.4[cols], factor)
+
+
+train.terms.4 <- colnames(new.training.4)[-1:-5]
+valid.terms.4 <- colnames(new.valid.4)[-1:-5]
+
+# find terms in train but not in validation
+terms.to.add.valid.4 <- train.terms.4[!(train.terms.4 %in% valid.terms.4)]
+terms.to.add.valid.4
+
+# add terms to validation set
+new.valid.4[terms.to.add.valid.4] <- 0 
+
+# find terms in validation set but not in train
+terms.to.del.valid.4 <- valid.terms.4[!(valid.terms.4 %in% train.terms.4)]
+terms.to.del.valid.4
+# character(0) - no further action
+#new.valid.4 <- select(new.valid.4,-terms.to.del.valid.4)
+
+# predict on validation set
+
+pred.age.valid.4 <- predict(lm.4, newdata=new.valid.4)
+
+# calculate MAE
+MAE <- mean(abs(pred.age.valid.4 - new.valid.4$Userage))
+MAE 
+# [1] 4.428047
+
+
+# try lm.5
+
+smart.80.valid = removeSparseTerms(valid.clean.smart, 0.80)
+
+# bind term matrix to aggregated train data
+new.valid.5 <-cbind(valid.aggre[,-6], as.matrix(smart.80.valid))
+
+colnames(new.valid.5)[c(2,3,4,5)] <- c(c("Usergender","Usertopic","Usersign","Userage")) 
+
+cols <- c("Usergender","Usertopic","Usersign")
+new.valid.5[cols] <- lapply(new.valid.5[cols], factor)
+
+
+train.terms.5 <- colnames(new.training.5)[-1:-5]
+valid.terms.5 <- colnames(new.valid.5)[-1:-5]
+
+# find terms in train but not in validation
+terms.to.add.valid.5 <- train.terms.5[!(train.terms.5 %in% valid.terms.5)]
+terms.to.add.valid.5
+
+# add terms to validation set
+new.valid.5[terms.to.add.valid.5] <- 0 
+
+# find terms in validation set but not in train
+terms.to.del.valid.5 <- valid.terms.5[!(valid.terms.5 %in% train.terms.5)]
+terms.to.del.valid.5
+# character(0) - no further action
+#new.valid.4 <- select(new.valid.4,-terms.to.del.valid.4)
+
+# predict on validation set
+
+pred.age.valid.5 <- predict(lm.5, newdata=new.valid.5)
+
+# calculate MAE
+MAE <- mean(abs(pred.age.valid.5 - new.valid.5$Userage))
+MAE 
+# [1] 4.433363
+
+# It seems lm.4 is the best.
 
 # ========================
 # Apply model on test data
@@ -322,6 +461,48 @@ new.test.3 <- select(new.test.3,-terms.to.del.test.3)
 pred.age.3 <- predict(lm.3, newdata=new.test.3)
 pred.table.3 <- cbind(test.aggre$user.id, pred.age.3)
 write.table(pred.table.3, file="submission14.csv", row.names=F, col.names = c("user.id", "age"), sep=',')
+
+
+
+
+# use lm.4 (weightSMART)
+
+test.clean.smart = DocumentTermMatrix(mywords.test, control = list(weighting = function (x) weightSMART(x,spec="ltc")))
+
+smart.85.test = removeSparseTerms(test.clean.smart, 0.85)
+smart.85.test
+
+# bind term matrix to aggregated train data
+new.test.4 <-cbind(test.aggre[,-5], as.matrix(smart.85.test))
+
+colnames(new.test.4)[c(2,3,4)] <- c(c("Usergender","Usertopic","Usersign")) 
+
+cols <- c("Usergender","Usertopic","Usersign")
+new.test.4[cols] <- lapply(new.test.4[cols], factor)
+#colnames(new.test)
+
+train.terms.4 <- colnames(new.training.4)[-1:-5]
+test.terms.4 <- colnames(new.test.4)[-1:-5]
+
+
+# find terms in train but not in test
+terms.to.add.test.4 <- train.terms.4[!(train.terms.4 %in% test.terms.4)]
+terms.to.add.test.4
+# character(0)
+# add terms to validation set
+# new.test.4[terms.to.add.test.4] <- 0 
+
+# find terms in test but not in train
+terms.to.del.test.4 <- test.terms.4[!(test.terms.4 %in% train.terms.4)]
+new.test.4 <- select(new.test.4,-terms.to.del.test.4)
+
+# predict on new.test
+
+pred.age.4 <- predict(lm.4, newdata=new.test.4)
+pred.table.4 <- cbind(test.aggre$user.id, pred.age.4)
+write.table(pred.table.4, file="submission15.csv", row.names=F, col.names = c("user.id", "age"), sep=',')
+
+
 
 #-------------------------------------------------------------
 
