@@ -12,6 +12,7 @@ David Roden
 Mengyao Zhang
 
 - Linear model development
+- Sparsity reduction
 - Cross validation: the validation set approach
 - Model tuning: change weighting method 
 
@@ -20,4 +21,5 @@ Runhao Zhao
 - Github coordinator
 - Data exploration
 - Lasso regression
+- Sparsity reduction
 - K-fold cross validation
