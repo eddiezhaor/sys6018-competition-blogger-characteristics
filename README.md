@@ -1,7 +1,5 @@
 # sys6018-competition-blogger-characteristics
 
-Kaggle Competition: SYS6018 Competition 3 - Predicting Blogger Characteristics
--
 
 Team Name: C2-13
 -
