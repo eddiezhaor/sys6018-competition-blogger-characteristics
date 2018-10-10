@@ -3,13 +3,13 @@
 library(tidyverse)
 library(tm)
 library(caret)
-library(bst)
-library(plyr)
-library(leaps)
+
 # read in the training data set
 
-textData <- read.csv("./Desktop/DATA MINING/sys6018-competition-blogger-characteristics2/all/train.csv")
+textData <- read.csv("train.csv")
 
+# We also tried to train on entire dataset, but the prediction accuracy does not improve.
+# train <- textData
 
 # split training data into train set and validation set
 set.seed(123)
@@ -135,6 +135,8 @@ summary(lm.4)
 # F-statistic: 15.58 on 997 and 11487 DF,  p-value: < 2.2e-16
 
 
+# Model 5: 
+# weightSMART, removeSparseTerms 0.80
 
 smart.80 = removeSparseTerms(blogs.clean.smart, 0.80)
 smart.80
@@ -149,10 +151,31 @@ new.training.5[cols] <- lapply(new.training.5[cols], factor)
 lm.5 <- lm(Userage ~ .-(user.id),data = new.training.5)
 summary(lm.5)
 
+# =============================================
+# cross validation
+# =============================================
+
+# use caret library to perform 10-fold cross validation on the 60% training dataset for each model
+train_control <- trainControl(method="cv",number=10)
+model <- train(Userage~. -(user.id),data=new.training,trControl=train_control,method = "lm",metric="MAE")
+model
+
+model.2 <- train(Userage~. -(user.id)-(Usertopic)-(Usersign),data=new.training,trControl=train_control,method = "lm",metric="MAE")
+model.2
+
+model.3 <- train(Userage~. -(user.id),data=new.training.2,trControl=train_control,method = "lm",metric="MAE")
+model.3
+
+model.4 <- train(Userage~. -(user.id),data=new.training.4,trControl=train_control,method = "lm",metric="MAE")
+model.4
+
+model.5 <- train(Userage~. -(user.id),data=new.training.5,trControl=train_control,method = "lm",metric="MAE")
+model.5
+
 
 
 # =============================================
-# cross validate on test (40% of original train)
+# validate on test (40% of original train)
 # =============================================
 
 # aggregate all text for each user
@@ -367,7 +390,11 @@ MAE <- mean(abs(pred.age.valid.5 - new.valid.5$Userage))
 MAE 
 # [1] 4.433363
 
-# It seems lm.4 is the best.
+# Model selection: It seems lm.4 is the best due to the lowest MAE on the validation set.
+
+
+
+
 
 # ========================
 # Apply model on test data
@@ -392,8 +419,8 @@ test.clean.tfidf = DocumentTermMatrix(mywords.test, control = list(weighting = w
 test.clean.tfidf
 
 # Remove sparse terms at various thresholds.
-#tfidf.99.test = removeSparseTerms(test.clean.tfidf, 0.99)  
-#tfidf.99.test
+tfidf.99.test = removeSparseTerms(test.clean.tfidf, 0.99)  
+tfidf.99.test
 
 tfidf.90.test = removeSparseTerms(test.clean.tfidf, 0.90)
 tfidf.90.test
@@ -467,8 +494,7 @@ write.table(pred.table.3, file="submission14.csv", row.names=F, col.names = c("u
 
 
 
-
-# use lm.4 (weightSMART)
+# use lm.4 (weightSMART) - the one we think is the best 
 
 test.clean.smart = DocumentTermMatrix(mywords.test, control = list(weighting = function (x) weightSMART(x,spec="ltc")))
 
@@ -493,7 +519,7 @@ terms.to.add.test.4 <- train.terms.4[!(train.terms.4 %in% test.terms.4)]
 terms.to.add.test.4
 # character(0)
 # add terms to validation set
-# new.test.4[terms.to.add.test.4] <- 0 
+#new.test.4[terms.to.add.test.4] <- 0 
 
 # find terms in test but not in train
 terms.to.del.test.4 <- test.terms.4[!(test.terms.4 %in% train.terms.4)]
@@ -505,77 +531,15 @@ pred.age.4 <- predict(lm.4, newdata=new.test.4)
 pred.table.4 <- cbind(test.aggre$user.id, pred.age.4)
 write.table(pred.table.4, file="submission15.csv", row.names=F, col.names = c("user.id", "age"), sep=',')
 
+# try change the ages to integers
+
+pred.age.4.int <- floor(pred.age.4)
+pred.table.4.int <- cbind(test.aggre$user.id,pred.age.4.int)
+write.table(pred.table.4.int, file="submission20.csv", row.names=F, col.names = c("user.id", "age"), sep=',')
+
 
 
 #-------------------------------------------------------------
-#Eddie:
-#create a function to build models using different weighting methods
-data.smart = DocumentTermMatrix(mywords, control = list(weighting = function (x) weightSMART(x,spec="ltc")))
-smart.85 = removeSparseTerms(data.smart, 0.85)
 
-# try 0.85 removeSParseTerms
-# bind term matrix to aggregated train data
-new.training.4 <-cbind(data.aggre[,-6], as.matrix(smart.85))
-colnames(new.training.4)
-new.training.5 <- new.training.4
-colnames(new.training.5)[c(2,3,4,5)] <- c(c("Usergender","Usertopic","Usersign","Userage")) 
-cols <- c("Usergender","Usertopic","Usersign")
-new.training.5[cols] <- lapply(new.training.5[cols], factor)
-colnames(new.training.5)
-dummie <- dummyVars("~.",new.training.5)
-dummie <- data.frame(predict(dummie, newdata = new.training.5))
 
-new.training.6 <- dummie[,-1]
-new.training.6 <- new.training.6[,order(names(new.training.6))]
-#==================
-testData <- read.csv("../eddie/Desktop/DATA MINING/sys6018-competition-blogger-characteristics2/all/test.csv")
-testData2 <- testData
-test.data.aggre <- aggregate(text~user.id+gender+topic+sign, data=testData2, paste, collapse = ",")
-neworder <- data.frame(user.id = unique(testData2$user.id))
-test.data.aggre <- test.data.aggre[match(neworder$user.id,test.data.aggre$user.id),]
-test.new.data <- VCorpus(VectorSource(test.data.aggre$text))
-test.mywords <- tm_map(test.new.data, stripWhitespace)
-test.mywords <- tm_map(test.mywords, removeNumbers)
-test.mywords <- tm_map(test.mywords, content_transformer(tolower))
-#test.mywords <- tm_map(test.mywords, removeWords, stopwords("english"))
-test.mywords <- tm_map(test.mywords, stemDocument)
-test.mywords <- tm_map(test.mywords, removeWords, c("urllink","nbsp"))
-test.mywords <- tm_map(test.mywords, removePunctuation)
-test.dtm <- DocumentTermMatrix(test.mywords, control = list(weighting = function (x) weightSMART(x,spec="ltc")))
-test.dtm <- removeSparseTerms(test.dtm, 0.85)
-test.m <-as.matrix(test.dtm)
-test.new.training <-cbind(test.data.aggre[,-5], test.m)
-rownames(test.new.training) <-seq(1,nrow(test.new.training),1)
-cols <- c(2, 3, 4)
-test.new.training[cols] <- lapply(test.new.training[cols], factor)
-colnames(test.new.training)[cols] <- c("Usergender","Usertopic","Usersign")
-test.dummie <- dummyVars("~.",test.new.training)
-test.dummie <- data.frame(predict(test.dummie, newdata = test.new.training))
 
-new.test.data <- test.dummie[colnames(test.dummie) %in% colnames(new.training.6)]
-not.exist <-new.training.6[!colnames(new.training.6) %in% colnames(test.dummie)]
-etrCol <- data.frame(matrix(0, nrow =nrow(new.test.data), ncol = length(colnames(not.exist))))
-colnames(etrCol) <-as.vector(colnames(not.exist))
-new.test.data2 <-cbind(new.test.data, etrCol)
-new.test.data2 <- new.test.data2[,order(names(new.test.data2))]
-#==================
-#cross validation
-
-# try 0.85 removeSParseTerms
-# bind term matrix to aggregated train data
-mytrain <-cbind(data.aggre[,-6], as.matrix(smart.85))
-
-colnames(mytrain)[c(2,3,4,5)] <- c(c("Usergender","Usertopic","Usersign","Userage")) 
-
-cols <- c("Usergender","Usertopic","Usersign")
-mytrain[cols] <- lapply(mytrain[cols], factor)
-mytrain2 <- mytrain[,-1]
-train_control <- trainControl(method="cv", number=10)
-grid <- expand.grid(intercept=c(-50:100))
-model <- train(Userage~., data=mytrain2,trControl=train_control,method = "lm",metric ="MAE")
-print(model)
-prediction <- predict(model,new.test.data2 )
-output <- cbind(test.data.aggre$user.id, prediction)
-colnames(output) <- c("user.id", "age")
-#setwd("./Desktop/DATA MINING/sys6018-competition-blogger-characteristics/Eddie/")
-write.csv(output, "./Desktop/submission12.csv",row.names=FALSE)
