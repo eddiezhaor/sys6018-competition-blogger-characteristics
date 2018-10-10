@@ -5,7 +5,9 @@ Team Name: C2-13
 -
 
 # Description:
-The project is to predict the age of a blog post's author based on the posting contents and some other features
+
+- The project is to predict the age of a blog post's author based on the posting contents and some other features
+
 Team Roles:
 -
 
