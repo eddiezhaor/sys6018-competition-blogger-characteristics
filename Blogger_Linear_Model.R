@@ -2,10 +2,13 @@
 # load libraries
 library(tidyverse)
 library(tm)
-
+library(caret)
+library(bst)
+library(plyr)
+library(leaps)
 # read in the training data set
 
-textData <- read.csv("train.csv")
+textData <- read.csv("./Desktop/DATA MINING/sys6018-competition-blogger-characteristics2/all/train.csv")
 
 
 # split training data into train set and validation set
@@ -505,6 +508,74 @@ write.table(pred.table.4, file="submission15.csv", row.names=F, col.names = c("u
 
 
 #-------------------------------------------------------------
+#Eddie:
+#create a function to build models using different weighting methods
+data.smart = DocumentTermMatrix(mywords, control = list(weighting = function (x) weightSMART(x,spec="ltc")))
+smart.85 = removeSparseTerms(data.smart, 0.85)
 
+# try 0.85 removeSParseTerms
+# bind term matrix to aggregated train data
+new.training.4 <-cbind(data.aggre[,-6], as.matrix(smart.85))
+colnames(new.training.4)
+new.training.5 <- new.training.4
+colnames(new.training.5)[c(2,3,4,5)] <- c(c("Usergender","Usertopic","Usersign","Userage")) 
+cols <- c("Usergender","Usertopic","Usersign")
+new.training.5[cols] <- lapply(new.training.5[cols], factor)
+colnames(new.training.5)
+dummie <- dummyVars("~.",new.training.5)
+dummie <- data.frame(predict(dummie, newdata = new.training.5))
 
+new.training.6 <- dummie[,-1]
+new.training.6 <- new.training.6[,order(names(new.training.6))]
+#==================
+testData <- read.csv("../eddie/Desktop/DATA MINING/sys6018-competition-blogger-characteristics2/all/test.csv")
+testData2 <- testData
+test.data.aggre <- aggregate(text~user.id+gender+topic+sign, data=testData2, paste, collapse = ",")
+neworder <- data.frame(user.id = unique(testData2$user.id))
+test.data.aggre <- test.data.aggre[match(neworder$user.id,test.data.aggre$user.id),]
+test.new.data <- VCorpus(VectorSource(test.data.aggre$text))
+test.mywords <- tm_map(test.new.data, stripWhitespace)
+test.mywords <- tm_map(test.mywords, removeNumbers)
+test.mywords <- tm_map(test.mywords, content_transformer(tolower))
+#test.mywords <- tm_map(test.mywords, removeWords, stopwords("english"))
+test.mywords <- tm_map(test.mywords, stemDocument)
+test.mywords <- tm_map(test.mywords, removeWords, c("urllink","nbsp"))
+test.mywords <- tm_map(test.mywords, removePunctuation)
+test.dtm <- DocumentTermMatrix(test.mywords, control = list(weighting = function (x) weightSMART(x,spec="ltc")))
+test.dtm <- removeSparseTerms(test.dtm, 0.85)
+test.m <-as.matrix(test.dtm)
+test.new.training <-cbind(test.data.aggre[,-5], test.m)
+rownames(test.new.training) <-seq(1,nrow(test.new.training),1)
+cols <- c(2, 3, 4)
+test.new.training[cols] <- lapply(test.new.training[cols], factor)
+colnames(test.new.training)[cols] <- c("Usergender","Usertopic","Usersign")
+test.dummie <- dummyVars("~.",test.new.training)
+test.dummie <- data.frame(predict(test.dummie, newdata = test.new.training))
 
+new.test.data <- test.dummie[colnames(test.dummie) %in% colnames(new.training.6)]
+not.exist <-new.training.6[!colnames(new.training.6) %in% colnames(test.dummie)]
+etrCol <- data.frame(matrix(0, nrow =nrow(new.test.data), ncol = length(colnames(not.exist))))
+colnames(etrCol) <-as.vector(colnames(not.exist))
+new.test.data2 <-cbind(new.test.data, etrCol)
+new.test.data2 <- new.test.data2[,order(names(new.test.data2))]
+#==================
+#cross validation
+
+# try 0.85 removeSParseTerms
+# bind term matrix to aggregated train data
+mytrain <-cbind(data.aggre[,-6], as.matrix(smart.85))
+
+colnames(mytrain)[c(2,3,4,5)] <- c(c("Usergender","Usertopic","Usersign","Userage")) 
+
+cols <- c("Usergender","Usertopic","Usersign")
+mytrain[cols] <- lapply(mytrain[cols], factor)
+mytrain2 <- mytrain[,-1]
+train_control <- trainControl(method="cv", number=10)
+grid <- expand.grid(intercept=c(-50:100))
+model <- train(Userage~., data=mytrain2,trControl=train_control,method = "lm",metric ="MAE")
+print(model)
+prediction <- predict(model,new.test.data2 )
+output <- cbind(test.data.aggre$user.id, prediction)
+colnames(output) <- c("user.id", "age")
+#setwd("./Desktop/DATA MINING/sys6018-competition-blogger-characteristics/Eddie/")
+write.csv(output, "./Desktop/submission12.csv",row.names=FALSE)
