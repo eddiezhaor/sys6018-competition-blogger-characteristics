@@ -16,6 +16,11 @@ Team Roles:
 
 David Roden
 
+- Data Exploration
+- Feature selection
+- Summary
+- R comments
+
 Mengyao Zhang
 
 - Linear model development
