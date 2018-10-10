@@ -7,7 +7,8 @@ Team Name: C2-13
 # Description:
 
 - The project is to predict the age of a blog post's author based on the posting contents and some other features
-![wordcloud](https://github.com/eddiezhaor/sys6018-competition-blogger-characteristics/blob/master/wordcloud.jpeg)
+<img src="https://github.com/eddiezhaor/sys6018-competition-blogger-characteristics/blob/master/wordcloud.jpeg" alt="wordcloud" width="800" height="500">
+
 
 
 Team Roles:
